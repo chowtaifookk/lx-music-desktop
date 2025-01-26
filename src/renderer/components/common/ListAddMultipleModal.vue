@@ -21,7 +21,8 @@ import { computed } from '@common/utils/vueTools'
 import { defaultList, loveList, userLists } from '@renderer/store/list/state'
 import { addListMusics, moveListMusics, createUserList } from '@renderer/store/list/action'
 import useKeyDown from '@renderer/utils/compositions/useKeyDown'
-import { useI18n } from '@/lang'
+import { useI18n } from '@root/lang'
+import { dialog } from '@renderer/plugins/Dialog'
 
 export default {
   props: {
@@ -111,9 +112,8 @@ export default {
     handleClick(index) {
       const list = 'progress' in this.musicList[0] ? this.musicList.map(t => t.metadata.musicInfo) : this.musicList
 
-      this.isMove
-        ? moveListMusics(this.fromListId, this.lists[index].id, list)
-        : addListMusics(this.lists[index].id, list)
+      if (this.isMove) void moveListMusics(this.fromListId, this.lists[index].id, list)
+      else void addListMusics(this.lists[index].id, list)
 
       if (this.keyModDown && !this.isMove) return
       this.$nextTick(() => {
@@ -130,12 +130,14 @@ export default {
       this.isEditing = true
       this.$nextTick(() => event.currentTarget.querySelector('.' + this.$style.newListInput).focus())
     },
-    handleSaveList(event) {
+    async handleSaveList(event) {
       let name = event.target.value
       this.newListName = event.target.value = ''
       this.isEditing = false
-      if (!name) return
-      createUserList({ name })
+      if (!name || (
+        userLists.some(l => l.name == name) && !(await dialog.confirm(window.i18n.t('list_duplicate_tip'))))
+      ) return
+      void createUserList({ name })
     },
   },
 }
@@ -164,7 +166,7 @@ export default {
   }
 }
 
-.btn-content {
+.btnContent {
   flex: auto;
   max-height: 100%;
   padding-right: 15px;

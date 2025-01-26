@@ -1,8 +1,9 @@
-import fs from 'fs'
-import crypto from 'crypto'
-import { gzip, gunzip } from 'zlib'
+import fs from 'node:fs'
+import crypto from 'node:crypto'
+import { gzip, gunzip } from 'node:zlib'
+import path from 'node:path'
+import { networkInterfaces } from 'node:os'
 import { log } from '@common/utils'
-import path from 'path'
 
 export const joinPath = (...paths: string[]): string => path.join(...paths)
 
@@ -15,7 +16,7 @@ export const dirname = (p: string): string => path.dirname(p)
  * @param {*} path 路径
  */
 export const checkPath = async(path: string): Promise<boolean> => {
-  return await new Promise(resolve => {
+  return new Promise(resolve => {
     if (!path) {
       resolve(false)
       return
@@ -30,8 +31,27 @@ export const checkPath = async(path: string): Promise<boolean> => {
   })
 }
 
+/**
+ * 检查路径并创建目录
+ * @param path
+ * @returns
+ */
+export const checkAndCreateDir = async(path: string) => {
+  return fs.promises.access(path, fs.constants.F_OK | fs.constants.W_OK)
+    .catch(async(err: NodeJS.ErrnoException) => {
+      if (err.code != 'ENOENT') throw err as Error
+      return fs.promises.mkdir(path, { recursive: true })
+    })
+    .then(() => true)
+    .catch((err) => {
+      console.error(err)
+      return false
+    })
+}
+
+
 export const getFileStats = async(path: string): Promise<fs.Stats | null> => {
-  return await new Promise(resolve => {
+  return new Promise(resolve => {
     if (!path) {
       resolve(null)
       return
@@ -97,7 +117,7 @@ export const readFile = async(path: string) => fs.promises.readFile(path)
 export const toMD5 = (str: string) => crypto.createHash('md5').update(str).digest('hex')
 
 export const gzipData = async(str: string): Promise<Buffer> => {
-  return await new Promise((resolve, reject) => {
+  return new Promise((resolve, reject) => {
     gzip(str, (err, result) => {
       if (err) {
         reject(err)
@@ -109,7 +129,7 @@ export const gzipData = async(str: string): Promise<Buffer> => {
 }
 
 export const gunzipData = async(buf: Buffer): Promise<string> => {
-  return await new Promise((resolve, reject) => {
+  return new Promise((resolve, reject) => {
     gunzip(buf, (err, result) => {
       if (err) {
         reject(err)
@@ -140,8 +160,8 @@ export const saveLxConfigFile = async(path: string, data: any) => {
 export const readLxConfigFile = async(path: string): Promise<any> => {
   let isJSON = path.endsWith('.json')
   let data: string | Buffer = await fs.promises.readFile(path, isJSON ? 'utf8' : 'binary')
-  if (!data || isJSON) return data
-  data = await gunzipData(Buffer.from(data, 'binary'))
+  if (!data) return data
+  if (!isJSON) data = await gunzipData(Buffer.from(data, 'binary'))
   data = JSON.parse(data)
 
   // 修复v1.14.0出现的导出数据被序列化两次的问题
@@ -184,4 +204,21 @@ export const copyFile = async(sourcePath: string, distPath: string) => {
 
 export const moveFile = async(sourcePath: string, distPath: string) => {
   return fs.promises.rename(sourcePath, distPath)
+}
+
+export const getAddress = (): string[] => {
+  const nets = networkInterfaces()
+  const results: string[] = []
+  // console.log(nets)
+
+  for (const interfaceInfos of Object.values(nets)) {
+    if (!interfaceInfos) continue
+    // Skip over non-IPv4 and internal (i.e. 127.0.0.1) addresses
+    for (const interfaceInfo of interfaceInfos) {
+      if (interfaceInfo.family === 'IPv4' && !interfaceInfo.internal) {
+        results.push(interfaceInfo.address)
+      }
+    }
+  }
+  return results
 }

@@ -14,34 +14,38 @@
           @update:model-value="updateConvolution($event)"
         />
       </div>
-      <div :class="$style.sliderList">
+      <div :class="[$style.sliderList, { [$style.disabled]: disabledConvolution }]">
         <div :class="$style.sliderItem">
           <span :class="$style.label">{{ $t('player__sound_effect_convolution_main_gain') }}</span>
-          <base-slider-bar :class="$style.slider" :value="appSetting['player.soundEffect.convolution.mainGain']" :min="0" :max="50" @change="handleUpdateMainGain" />
+          <base-slider-bar :class="$style.slider" :value="appSetting['player.soundEffect.convolution.mainGain']" :min="0" :max="50" :disabled="disabledConvolution" @change="handleUpdateMainGain" />
           <span :class="[$style.value]">{{ appSetting['player.soundEffect.convolution.mainGain'] * 10 }}%</span>
         </div>
         <div :class="$style.sliderItem">
           <span :class="$style.label">{{ $t('player__sound_effect_convolution_send_gain') }}</span>
-          <base-slider-bar :class="$style.slider" :value="appSetting['player.soundEffect.convolution.sendGain']" :min="0" :max="50" @change="handleUpdateSendGain" />
+          <base-slider-bar :class="$style.slider" :value="appSetting['player.soundEffect.convolution.sendGain']" :min="0" :max="50" :disabled="disabledConvolution" @change="handleUpdateSendGain" />
           <span :class="[$style.value]">{{ appSetting['player.soundEffect.convolution.sendGain'] * 10 }}%</span>
         </div>
       </div>
     </div>
     <div :class="$style.saveList">
       <base-btn v-for="item in userPresetList" :key="item.id" min @click="handleSetPreset(item)" @contextmenu="handleRemovePreset(item.id)">{{ item.name }}</base-btn>
-      <AddConvolutionPresetBtn v-if="userPresetList.length < 31" />
+      <AddConvolutionPresetBtn v-if="userPresetList.length < 31" :disabled="disabledConvolution" />
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted } from '@common/utils/vueTools'
-import { appSetting, updateSetting } from '@renderer/store/setting'
-import { convolutions } from '@renderer/plugins/player'
-import AddConvolutionPresetBtn from './AddConvolutionPresetBtn'
+import { ref, onMounted, computed } from '@common/utils/vueTools'
+import { appSetting, saveMediaDeviceId, updateSetting } from '@renderer/store/setting'
+import { convolutions, setMediaDeviceId } from '@renderer/plugins/player'
+import AddConvolutionPresetBtn from './AddConvolutionPresetBtn.vue'
 import { getUserConvolutionPresetList, removeUserConvolutionPreset } from '@renderer/store/soundEffect'
 
-const updateConvolution = val => {
+const updateConvolution = async val => {
+  if (appSetting['player.mediaDeviceId'] != 'default') {
+    await setMediaDeviceId('default').catch(_ => _)
+    saveMediaDeviceId('default')
+  }
   const target = convolutions.find(c => c.source == val)
   const setting = {
     'player.soundEffect.convolution.fileName': val,
@@ -61,6 +65,7 @@ const handleUpdateSendGain = (value) => {
 }
 
 const handleSetPreset = (item) => {
+  if (appSetting['player.mediaDeviceId'] != 'default') saveMediaDeviceId('default')
   updateSetting({
     'player.soundEffect.convolution.fileName': item.source,
     'player.soundEffect.convolution.mainGain': item.mainGain,
@@ -69,11 +74,15 @@ const handleSetPreset = (item) => {
 }
 const userPresetList = ref([])
 const handleRemovePreset = id => {
-  removeUserConvolutionPreset(id)
+  void removeUserConvolutionPreset(id)
 }
 
+const disabledConvolution = computed(() => {
+  return !appSetting['player.soundEffect.convolution.fileName']
+})
+
 onMounted(() => {
-  getUserConvolutionPresetList().then(list => {
+  void getUserConvolutionPresetList().then(list => {
     userPresetList.value = list
   })
 })
@@ -112,6 +121,10 @@ onMounted(() => {
   flex-flow: column nowrap;
   gap: 15px;
   width: 100%;
+  transition: opacity @transition-normal;
+  &.disabled  {
+    opacity: .4;
+  }
 }
 .sliderItem {
   display: flex;

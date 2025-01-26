@@ -6,9 +6,15 @@ dd
   .gap-top
     base-checkbox(id="setting__update_showChangeLog" :model-value="appSetting['common.showChangeLog']" :label="$t('setting__update_show_change_log')" @update:model-value="updateSetting({'common.showChangeLog': $event})")
   .gap-top
-    .p.small
-      | {{ $t('setting__update_latest_label') }}{{ versionInfo.newVersion ? versionInfo.newVersion.version : $t('setting__update_unknown') }}
-    .p.small(@click="handleOpenDevTools") {{ $t('setting__update_current_label') }}{{ versionInfo.version }}
+    .gap-top
+      .p.small(@click="handleOpenDevTools") {{ $t('setting__update_current_label') }}{{ versionInfo.version }}
+      .p.small(v-if="commit_id")
+        | {{ $t('setting__update_commit_id') }}
+        span.select {{ commit_id }}
+      .p.small(v-if="commit_date") {{ $t('setting__update_commit_date') }}{{ commit_date }}
+
+    .p.small.gap-top
+      | {{ $t('setting__update_latest_label') }}{{ versionInfo.newVersion && versionInfo.newVersion.version != '0.0.0' ? versionInfo.newVersion.version : $t('setting__update_unknown') }}
     .p.small(v-if="downloadProgress" style="line-height: 1.5;")
       | {{ $t('setting__update_downloading') }}
       br
@@ -16,17 +22,19 @@ dd
     template(v-if="versionInfo.newVersion")
       .p(v-if="versionInfo.isLatest")
         span {{ $t('setting__update_latest') }}
+      .p(v-else-if="versionInfo.isUnknown")
+        span {{ $t('setting__update_unknown_tip') }}
       .p(v-else-if="versionInfo.status != 'downloading'")
         span {{ $t('setting__update_new_version') }}
       .p
-        base-btn.btn.gap-left(min @click="showUpdateModal") {{$t('setting__update_open_version_modal_btn')}}
-    .p.small(v-else-if="versionInfo.status =='checking'") {{$t('setting__update_checking')}}
+        base-btn.btn.gap-left(min @click="showUpdateModal") {{ $t('setting__update_open_version_modal_btn') }}
+    .p.small(v-else-if="versionInfo.status =='checking'") {{ $t('setting__update_checking') }}
 </template>
 
 <script>
 import { computed } from '@common/utils/vueTools'
 import { versionInfo } from '@renderer/store'
-import { sizeFormate } from '@common/utils/common'
+import { dateFormat, sizeFormate } from '@common/utils/common'
 // import { openDirInExplorer, selectDir } from '@renderer/utils'
 import { openDevTools } from '@renderer/utils/ipc'
 import { useI18n } from '@renderer/plugins/i18n'
@@ -37,6 +45,8 @@ export default {
   setup() {
     let lastClickTime = 0
     let clickNum = 0
+    const commit_id = COMMIT_ID
+    const commit_date = dateFormat(COMMIT_DATE)
 
     const t = useI18n()
 
@@ -73,13 +83,15 @@ export default {
       showUpdateModal,
       appSetting,
       updateSetting,
+      commit_id,
+      commit_date,
     }
   },
 }
 </script>
 
 <style lang="less" module>
-.save-path {
-  font-size: 12px;
-}
+// .savePath {
+//   font-size: 12px;
+// }
 </style>

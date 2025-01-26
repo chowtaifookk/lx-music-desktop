@@ -20,7 +20,7 @@
       </div>
       <div v-if="list.length" ref="dom_listContent" :class="$style.content">
         <base-virtualized-list
-          v-slot="{ item, index }" :list="list" key-name="id" :item-height="listItemHeight"
+          ref="listRef" v-slot="{ item, index }" :list="list" key-name="id" :item-height="listItemHeight"
           container-class="scroll" content-class="list"
         >
           <div
@@ -68,6 +68,7 @@
 <script>
 // import { checkPath, openDirInExplorer, openUrl } from '@common/utils/electron'
 
+import { ref } from '@common/utils/vueTools'
 import useListInfo from './useListInfo'
 import useList from './useList'
 import useTab from './useTab'
@@ -80,6 +81,7 @@ import { appSetting } from '@renderer/store/setting'
 export default {
   name: 'Download',
   setup() {
+    const listRef = ref()
     const { tabs, activeTab } = useTab()
 
     const {
@@ -95,7 +97,7 @@ export default {
       listItemHeight,
       removeAllSelect,
       handleSelectData,
-    } = useList({ list, listAll })
+    } = useList({ listRef, list, listAll })
 
     const {
       handlePlayMusic,
@@ -143,9 +145,9 @@ export default {
       if (task.isComplate) {
         handlePlayMusic(list.value.indexOf(task), true)
       } else if (task.status === downloadStatus.RUN || task.status === downloadStatus.WAITING) {
-        handlePauseTask(index, true)
+        void handlePauseTask(index, true)
       } else {
-        handleStartTask(index, true)
+        void handleStartTask(index, true)
       }
       clickTime = 0
       clickIndex = -1
@@ -172,16 +174,16 @@ export default {
           handlePlayMusic(index, true)
           break
         case 'start':
-          handleStartTask(index, true)
+          void handleStartTask(index, true)
           break
         case 'pause':
-          handlePauseTask(index, true)
+          void handlePauseTask(index, true)
           break
         case 'remove':
-          handleRemoveTask(index, true)
+          void handleRemoveTask(index, true)
           break
         case 'file':
-          handleOpenFile(index)
+          void handleOpenFile(index)
           break
         case 'search':
           handleSearch(index)
@@ -196,6 +198,7 @@ export default {
       return quality == 'flac24bit' ? 'FLAC Hires' : quality?.toUpperCase()
     }
     return {
+      listRef,
       list,
       downloadStatus,
       rightClickSelectedIndex,
@@ -267,7 +270,7 @@ export default {
   flex: auto;
 }
 
-.no-item {
+.noItem {
   position: relative;
   height: 100%;
   display: flex;

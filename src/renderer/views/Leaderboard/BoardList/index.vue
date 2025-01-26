@@ -22,29 +22,34 @@
   />
 </template>
 
-<script setup lang="ts">
+<script setup>
 import { watch, shallowReactive, ref } from '@common/utils/vueTools'
 import { getBoardsList, setBoard } from '@renderer/store/leaderboard/action'
-import { boards, Board } from '@renderer/store/leaderboard/state'
+import { boards } from '@renderer/store/leaderboard/state'
 import useMenu from './useMenu'
-import LX from '@renderer/types/lx'
 import { useRouter, useRoute } from '@common/utils/vueRouter'
 
-const props = defineProps<{
-  source: LX.OnlineSource
-  boardId?: string
-}>()
+const props = defineProps({
+  source: {
+    type: String,
+    required: true,
+  },
+  boardId: {
+    type: [String, undefined],
+    default: undefined,
+  },
+})
 
 const emit = defineEmits(['show-menu'])
 
 const router = useRouter()
 const route = useRoute()
 
-const list = shallowReactive<Board['list']>([])
+const list = shallowReactive([])
 const rightClickItemIndex = ref(-1)
 
-const handleToggleList = (id: string) => {
-  router.replace({
+const handleToggleList = (id) => {
+  void router.replace({
     path: route.path,
     query: {
       source: props.source,
@@ -61,11 +66,11 @@ const {
   menuClick,
 } = useMenu({ emit, list })
 
-const handleRigthClick = (event: MouseEvent, index: number) => {
+const handleRigthClick = (event, index) => {
   rightClickItemIndex.value = index
   showMenu(event, index)
 }
-const handleMenuClick = (action?: { action: string}) => {
+const handleMenuClick = (action) => {
   if (rightClickItemIndex.value < 0) return
   let index = rightClickItemIndex.value
   rightClickItemIndex.value = -1

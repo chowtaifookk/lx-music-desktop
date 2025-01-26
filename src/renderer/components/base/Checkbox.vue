@@ -10,7 +10,10 @@
           <use xlink:href="#icon-check-true" />
         </svg>
       </div>
-      <span v-if="label != null" :class="$style.label" v-text="label" />
+      <slot v-if="label == null" />
+      <span v-else :class="$style.label">
+        {{ label }}
+      </span>
     </label>
   </div>
 </template>
@@ -44,14 +47,14 @@ export default {
     },
     label: {
       type: String,
-      required: true,
+      default: undefined,
     },
     disabled: {
       type: Boolean,
       default: false,
     },
   },
-  emits: ['update:model-value', 'change'],
+  emits: ['update:modelValue', 'change'],
   data() {
     return {
       checked: false,
@@ -80,7 +83,7 @@ export default {
           modelValue = checked
         } else modelValue = checked ? this.value : ''
       }
-      this.$emit('update:model-value', modelValue)
+      this.$emit('update:modelValue', modelValue)
       this.$emit('change', modelValue)
     },
     setValue(value) {

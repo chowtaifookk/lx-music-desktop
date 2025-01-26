@@ -1,8 +1,8 @@
 <template>
   <div :class="$style.container">
     <div :class="$style.header">
-      <base-tab v-model="source" :class="$style.tab" :list="sources" @change="handleSourceChange" />
-      <base-tab v-model="searchType" :class="$style.tab" :list="searchTypes" @change="handleTypeChange" />
+      <base-tab v-model="source" :list="sources" @change="handleSourceChange" />
+      <base-tab v-model="searchType" :list="searchTypes" @change="handleTypeChange" />
     </div>
     <div :class="$style.main">
       <song-list-list v-if="searchType == 'songlist'" v-show="searchText" :page="page" :source-id="source" />
@@ -54,7 +54,7 @@ const verifyQueryParams = async(to, from, next) => {
     if (!_page) page.value = 1
   }
   next()
-  setSearchSetting({ source: _source, type: _type })
+  void setSearchSetting({ source: _source, type: _type })
 }
 
 export default {
@@ -76,7 +76,7 @@ export default {
       }
     })
     const handleSourceChange = (id) => {
-      router.replace({
+      void router.replace({
         path: route.path,
         query: {
           ...route.query,
@@ -93,7 +93,7 @@ export default {
       ]
     })
     const handleTypeChange = (type) => {
-      router.replace({
+      void router.replace({
         path: route.path,
         query: {
           ...route.query,

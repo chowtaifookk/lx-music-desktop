@@ -94,10 +94,11 @@
       v-model:show="isShowListAddMultiple" :from-list-id="listId"
       :is-move="isMoveMultiple" :music-list="selectedList" :exclude-list-id="excludeListIds" teleport="#view" @confirm="removeAllSelect"
     />
-    <common-download-modal v-model:show="isShowDownload" :music-info="selectedDownloadMusicInfo" teleport="#view" />
-    <common-download-multiple-modal v-model:show="isShowDownloadMultiple" :list="selectedList" teleport="#view" @confirm="removeAllSelect" />
+    <common-download-modal v-model:show="isShowDownload" :music-info="selectedDownloadMusicInfo" teleport="#view" :list-id="listId" />
+    <common-download-multiple-modal v-model:show="isShowDownloadMultiple" :list="selectedList" teleport="#view" :list-id="listId" @confirm="removeAllSelect" />
     <search-list :list="list" :visible="isShowSearchBar" @action="handleMusicSearchAction" />
     <music-sort-modal v-model:show="isShowMusicSortModal" :music-info="selectedSortMusicInfo" :selected-num="selectedNum" @confirm="sortMusic" />
+    <music-toggle-modal v-model:show="isShowMusicToggleModal" :music-info="selectedToggleMusicInfo" @toggle="toggleSource" />
     <base-menu v-model="isShowItemMenu" :menus="menus" :xy="menuLocation" item-name="name" @menu-click="handleMenuClick" />
   </div>
 </template>
@@ -105,8 +106,9 @@
 <script>
 import { clipboardWriteText } from '@common/utils/electron'
 import { assertApiSupport } from '@renderer/store/utils'
-import SearchList from './components/SearchList'
-import MusicSortModal from './components/MusicSortModal'
+import SearchList from './components/SearchList.vue'
+import MusicSortModal from './components/MusicSortModal.vue'
+import MusicToggleModal from './components/MusicToggleModal.vue'
 import useListInfo from './useListInfo'
 import useList from './useList'
 import useMenu from './useMenu'
@@ -117,12 +119,14 @@ import useSort from './useSort'
 import useMusicActions from './useMusicActions'
 import useSearch from './useSearch'
 import useListScroll from './useListScroll'
+import useMusicToggle from './useMusicToggle'
 import { appSetting } from '@renderer/store/setting'
 export default {
   name: 'MusicList',
   components: {
     SearchList,
     MusicSortModal,
+    MusicToggleModal,
   },
   props: {
     listId: {
@@ -139,12 +143,12 @@ export default {
     const handleRestoreScroll = (_scrollIndex, _isAnimation) => {
       scrollIndex = _scrollIndex
       isAnimation = _isAnimation
-      if (isAnimation) restoreScroll(scrollIndex, isAnimation)
+      if (isAnimation) void restoreScroll(scrollIndex, isAnimation)
       // console.log('handleRestoreScroll', scrollIndex, isAnimation)
     }
     const onLoadedList = () => {
       // console.log('restoreScroll', scrollIndex, isAnimation)
-      restoreScroll(scrollIndex, isAnimation)
+      void restoreScroll(scrollIndex, isAnimation)
     }
 
     const {
@@ -164,7 +168,7 @@ export default {
       listItemHeight,
       handleSelectData,
       removeAllSelect,
-    } = useList({ list })
+    } = useList({ listRef, list })
 
     const {
       handlePlayMusic,
@@ -198,9 +202,17 @@ export default {
     } = useSort({ props, list, selectedList, removeAllSelect })
 
     const {
+      handleShowMusicToggleModal,
+      isShowMusicToggleModal,
+      selectedToggleMusicInfo,
+      toggleSource,
+    } = useMusicToggle(props, list)
+
+    const {
       handleSearch,
       handleOpenMusicDetail,
       handleCopyName,
+      handleDislikeMusic,
       handleRemoveMusic,
     } = useMusicActions({ props, list, removeAllSelect, selectedList })
 
@@ -217,12 +229,14 @@ export default {
       handleShowDownloadModal,
       handlePlayMusic,
       handlePlayMusicLater,
+      handleShowMusicToggleModal,
       handleSearch,
       handleShowMusicAddModal,
       handleShowMusicMoveModal,
       handleShowSortModal,
       handleOpenMusicDetail,
       handleCopyName,
+      handleDislikeMusic,
       handleRemoveMusic,
     })
 
@@ -336,6 +350,10 @@ export default {
       handleRestoreScroll,
 
       actionButtonsVisible,
+
+      isShowMusicToggleModal,
+      selectedToggleMusicInfo,
+      toggleSource,
     }
   },
 }
@@ -362,7 +380,7 @@ export default {
       color: var(--color-primary);
       padding: 5px;
       font-size: .8em;
-      line-height: 1;
+      line-height: 1.2;
       opacity: .75;
       display: inline-block;
     }
@@ -396,7 +414,7 @@ export default {
   flex: auto;
 }
 
-.no-item {
+.noItem {
   position: relative;
   height: 100%;
   display: flex;

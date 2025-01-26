@@ -1,8 +1,8 @@
-import { BrowserWindow, dialog } from 'electron'
-import { join } from 'path'
+import { BrowserWindow, dialog, session } from 'electron'
+import path from 'node:path'
 import { createTaskBarButtons, getWindowSizeInfo } from './utils'
-import { isLinux, isWin } from '@common/utils'
-import { openDevTools as handleOpenDevTools } from '@main/utils'
+import { getPlatform, isLinux, isWin } from '@common/utils'
+import { getProxy, openDevTools as handleOpenDevTools } from '@main/utils'
 import { mainSend } from '@common/mainIpc'
 import { sendFocus, sendTaskbarButtonClick } from './rendererEvent'
 import { encodePath } from '@common/utils/electron'
@@ -13,14 +13,13 @@ const winEvent = () => {
   if (!browserWindow) return
 
   browserWindow.on('close', event => {
-    if (global.lx.isSkipTrayQuit || !global.lx.appSetting['tray.enable'] || (!isWin && !global.lx.isTrafficLightClose)) {
+    if (global.lx.isSkipTrayQuit || !global.lx.appSetting['tray.enable']) {
       browserWindow!.setProgressBar(-1)
       // global.lx.mainWindowClosed = true
       global.lx.event_app.main_window_close()
       return
     }
 
-    global.lx.isTrafficLightClose &&= false
     event.preventDefault()
     browserWindow!.hide()
   })
@@ -50,6 +49,9 @@ const winEvent = () => {
 
   browserWindow.on('show', () => {
     global.lx.event_app.main_window_show()
+
+    // 修复隐藏窗口后再显示时任务栏按钮丢失的问题
+    setThumbarButtons()
   })
   browserWindow.on('hide', () => {
     global.lx.event_app.main_window_hide()
@@ -62,6 +64,13 @@ export const createWindow = () => {
   const windowSizeInfo = getWindowSizeInfo(global.lx.appSetting['common.windowSizeId'])
 
   const { shouldUseDarkColors, theme } = global.lx.theme
+  const ses = session.fromPartition('persist:win-main')
+  const proxy = getProxy()
+  if (proxy) {
+    void ses.setProxy({
+      proxyRules: `http://${proxy.host}:${proxy.port}`,
+    })
+  }
 
   /**
    * Initial window options
@@ -72,13 +81,16 @@ export const createWindow = () => {
     width: windowSizeInfo.width,
     frame: false,
     transparent: !global.envParams.cmdParams.dt,
+    hasShadow: global.envParams.cmdParams.dt,
     // enableRemoteModule: false,
     // icon: join(global.__static, isWin ? 'icons/256x256.ico' : 'icons/512x512.png'),
     resizable: false,
     maximizable: false,
     fullscreenable: true,
+    roundedCorners: false,
     show: false,
     webPreferences: {
+      session: ses,
       nodeIntegrationInWorker: true,
       contextIsolation: false,
       webSecurity: false,
@@ -96,8 +108,8 @@ export const createWindow = () => {
   }
   browserWindow = new BrowserWindow(options)
 
-  const winURL = global.isDev ? 'http://localhost:9080' : `file://${join(encodePath(__dirname), 'index.html')}`
-  void browserWindow.loadURL(winURL + `?dt=${!!global.envParams.cmdParams.dt}&dark=${shouldUseDarkColors}&theme=${encodeURIComponent(JSON.stringify(theme))}`)
+  const winURL = process.env.NODE_ENV !== 'production' ? 'http://localhost:9080' : `file://${path.join(encodePath(__dirname), 'index.html')}`
+  void browserWindow.loadURL(winURL + `?os=${getPlatform()}&dt=${!!global.envParams.cmdParams.dt}&dark=${shouldUseDarkColors}&theme=${encodeURIComponent(JSON.stringify(theme))}`)
 
   winEvent()
 
@@ -105,6 +117,7 @@ export const createWindow = () => {
 
   // global.lx.mainWindowClosed = false
   // browserWindow.webContents.openDevTools()
+  global.lx.event_app.main_window_created(browserWindow)
 }
 
 export const isExistWindow = (): boolean => !!browserWindow
@@ -118,6 +131,21 @@ export const closeWindow = () => {
   browserWindow.close()
 }
 
+export const setProxy = () => {
+  if (!browserWindow) return
+  const proxy = getProxy()
+  if (proxy) {
+    void browserWindow.webContents.session.setProxy({
+      proxyRules: `http://${proxy.host}:${proxy.port}`,
+    })
+  } else {
+    void browserWindow.webContents.session.setProxy({
+      proxyRules: '',
+    })
+  }
+}
+
+
 export const sendEvent = <T = any>(name: string, params?: T) => {
   if (!browserWindow) return
   mainSend(browserWindow, name, params)
@@ -125,7 +153,7 @@ export const sendEvent = <T = any>(name: string, params?: T) => {
 
 export const showSelectDialog = async(options: Electron.OpenDialogOptions) => {
   if (!browserWindow) throw new Error('main window is undefined')
-  return await dialog.showOpenDialog(browserWindow, options)
+  return dialog.showOpenDialog(browserWindow, options)
 }
 export const showDialog = ({ type, message, detail }: Electron.MessageBoxSyncOptions) => {
   if (!browserWindow) return
@@ -137,7 +165,7 @@ export const showDialog = ({ type, message, detail }: Electron.MessageBoxSyncOpt
 }
 export const showSaveDialog = async(options: Electron.SaveDialogOptions) => {
   if (!browserWindow) throw new Error('main window is undefined')
-  return await dialog.showSaveDialog(browserWindow, options)
+  return dialog.showSaveDialog(browserWindow, options)
 }
 export const minimize = () => {
   if (!browserWindow) return
@@ -159,26 +187,17 @@ export const toggleHide = () => {
 }
 export const toggleMinimize = () => {
   if (!browserWindow) return
-  if (browserWindow.isMinimized()) {
-    if (!browserWindow.isVisible()) {
-      browserWindow.show()
-    }
-    browserWindow.restore()
-    browserWindow.focus()
-  } else {
-    browserWindow.minimize()
-  }
+  if (browserWindow.isVisible()) {
+    if (browserWindow.isMinimized()) browserWindow.restore()
+    else browserWindow.minimize()
+  } else browserWindow.show()
 }
 export const showWindow = () => {
   if (!browserWindow) return
-  if (browserWindow.isMinimized()) {
-    browserWindow.restore()
-  }
   if (browserWindow.isVisible()) {
-    browserWindow.focus()
-  } else {
-    browserWindow.show()
-  }
+    if (browserWindow.isMinimized()) browserWindow.restore()
+    else browserWindow.focus()
+  } else browserWindow.show()
 }
 export const hideWindow = () => {
   if (!browserWindow) return
@@ -253,7 +272,7 @@ export const clearCache = async() => {
 
 export const getCacheSize = async() => {
   if (!browserWindow) throw new Error('main window is undefined')
-  return await browserWindow.webContents.session.getCacheSize()
+  return browserWindow.webContents.session.getCacheSize()
 }
 
 export const getWebContents = (): Electron.WebContents => {

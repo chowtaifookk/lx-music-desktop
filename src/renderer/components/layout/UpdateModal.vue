@@ -18,22 +18,19 @@ material-modal(:show="versionInfo.showModal" max-width="60%" @close="handleClose
       div(:class="$style.current")
         h3 当前版本：{{ versionInfo.version }}
         div(:class="$style.desc")
-          p 更新信息获取失败，可能是无法访问Github导致的，请手动检查更新！
+          p 更新信息获取失败，可能是无法访问 GitHub 导致的，请手动检查更新！
           p
             | 检查方法：打开
             base-btn(min aria-label="点击打开" @click="handleOpenUrl('https://github.com/lyswhut/lx-music-desktop/releases')") 软件发布页
-            | 或
-            base-btn(min aria-label="点击打开" @click="handleOpenUrl('https://www.lanzoui.com/b0bf2cfa/')") 网盘
-            | (密码：
-            strong.hover(aria-label="点击复制" @click="handleCopy('glqw')") glqw
-            | )查看它们的
+            | ，查看「Latest」发布的
             strong 版本号
-            | 与当前版本({{ versionInfo.version }})对比是否一样，
-          p 若一样则不必理会该弹窗，直接关闭即可，否则请手动下载新版本更新。
+            | 与当前版本({{ versionInfo.version }})对比是否一致。
+          p 若一致则不必理会该弹窗，直接关闭即可；否则请手动下载新版本更新。
     div(:class="$style.footer")
       div(:class="$style.btns")
-        base-btn(v-if="versionInfo.status == 'error'" :class="$style.btn" @click="handleCheckUpdate") 重新检查更新
-        base-btn(v-else :class="$style.btn" disabled) 检查更新中...
+        base-btn(v-if="versionInfo.status == 'error'" :class="$style.btn2" @click="handleCheckUpdate") 重新检查更新
+        base-btn(v-else :class="$style.btn2" disabled) 检查更新中...
+        base-btn(:disabled="disabledIgnoreFailBtn" :class="$style.btn2" @click="handleIgnoreFailTipClick") 一个星期内不再提醒
   main(v-else-if="versionInfo.status == 'downloaded'" :class="$style.main")
     h2 🚀程序更新🚀
 
@@ -75,22 +72,19 @@ material-modal(:show="versionInfo.showModal" max-width="60%" @close="handleClose
 
     div(:class="$style.footer")
       div(:class="$style.desc")
-        p 发现有新版本啦，你可以尝试使用自动更新或手动更新，
+        p 发现有新版本啦，你可以选择自动更新或手动更新。
         p 手动更新可以去&nbsp;
           strong.hover.underline(aria-label="点击打开" @click="handleOpenUrl('https://github.com/lyswhut/lx-music-desktop/releases')") 软件发布页
-          | &nbsp;或&nbsp;
-          strong.hover.underline(aria-label="点击打开" @click="handleOpenUrl('https://www.lanzoui.com/b0bf2cfa/')") 网盘
-          | (密码：
-          strong.hover(aria-label="点击复制" @click="handleCopy('glqw')") glqw
-          | )&nbsp;下载
-        p 注：国内Windows/MAC用户推荐到网盘下载，若遇到问题可以看
-          strong.hover.underline(aria-label="点击打开" @click="handleOpenUrl('https://lyswhut.github.io/lx-music-doc/desktop/faq')") 常见问题
+          | 下载。
+        p 若遇到问题可以阅读
+          strong.hover.underline(aria-label="点击打开" @click="handleOpenUrl('https://lyswhut.github.io/lx-music-doc/desktop/faq')") 桌面版常见问题
+          | 。
         p(v-if="progress") 当前下载进度：{{ progress }}
         p(v-else) &nbsp;
       div(:class="$style.btns")
         base-btn(:class="$style.btn2" @click="handleIgnoreClick") {{ isIgnored ? '取消忽略' : '忽略更新该版本' }}
         base-btn(v-if="versionInfo.status == 'downloading'" :class="$style.btn2" disabled) 下载更新中...
-        base-btn(v-else :class="$style.btn2" @click="handleDonwloadClick") 下载更新
+        base-btn(v-else :class="$style.btn2" @click="handleDownloadClick") 下载更新
 </template>
 
 <script>
@@ -109,11 +103,12 @@ export default {
   data() {
     return {
       ignoreVersion: null,
+      disabledIgnoreFailBtn: true,
     }
   },
   computed: {
     history() {
-      if (!this.versionInfo.newVersion || !this.versionInfo.newVersion?.history) return []
+      if (!this.versionInfo.newVersion?.history) return []
       let arr = []
       let currentVer = this.versionInfo.version
       this.versionInfo.newVersion?.history.forEach(ver => {
@@ -134,16 +129,17 @@ export default {
     },
   },
   created() {
-    getIgnoreVersion().then(version => {
+    void getIgnoreVersion().then(version => {
       this.ignoreVersion = version
     })
+    this.disabledIgnoreFailBtn = Date.now() - parseInt(localStorage.getItem('update__check_failed_tip') ?? '0') < 7 * 86400000
   },
   methods: {
     handleClose() {
       versionInfo.showModal = false
     },
     handleOpenUrl(url) {
-      openUrl(url)
+      void openUrl(url)
     },
     handleRestartClick(event) {
       this.handleClose()
@@ -166,7 +162,7 @@ export default {
           confirmButtonText: window.i18n.t('update__ignore_confirm'),
         })) {
           setTimeout(() => {
-            dialog({
+            void dialog({
               message: window.i18n.t('update__ignore_confirm_tip'),
               confirmButtonText: window.i18n.t('update__ignore_confirm_tip_confirm'),
             })
@@ -178,7 +174,7 @@ export default {
       // saveIgnoreVersion(this.versionInfo.newVersion?.version)
       // this.handleClose()
     },
-    handleDonwloadClick() {
+    handleDownloadClick() {
       if (this.isIgnored) saveIgnoreVersion(this.ignoreVersion = null)
       versionInfo.status = 'downloading'
       downloadUpdate()
@@ -188,6 +184,10 @@ export default {
       versionInfo.status = 'checking'
       versionInfo.reCheck = true
       checkUpdate()
+    },
+    handleIgnoreFailTipClick() {
+      localStorage.setItem('update__check_failed_tip', Date.now().toString())
+      this.disabledIgnoreFailBtn = true
     },
   },
 }

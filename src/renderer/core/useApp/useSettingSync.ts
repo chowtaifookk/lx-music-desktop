@@ -1,15 +1,15 @@
 import { watch } from '@common/utils/vueTools'
 import { isFullscreen, proxy, sync, windowSizeList } from '@renderer/store'
 import { appSetting } from '@renderer/store/setting'
-import { sendSyncAction, setTaskBarProgress, setWindowSize } from '@renderer/utils/ipc'
-import { setLanguage } from '@/lang'
+import { sendSyncAction, setWindowSize } from '@renderer/utils/ipc'
+import { setLanguage } from '@root/lang'
 import { setUserApi } from '../apiSource'
 // import { applyTheme, getThemes } from '@renderer/store/utils'
 
 
 export default () => {
   watch(() => appSetting['common.windowSizeId'], (index) => {
-    let info = index == null ? windowSizeList[2] : windowSizeList[index]
+    const info = index == null ? windowSizeList[2] : windowSizeList[index]
     setWindowSize(info.width, info.height)
   })
   watch(() => appSetting['common.fontSize'], (fontSize) => {
@@ -20,6 +20,7 @@ export default () => {
   watch(() => appSetting['common.langId'], (id) => {
     if (!id) return
     setLanguage(id)
+    window.setLang(id)
   })
 
   watch(() => appSetting['common.apiSource'], apiSource => {
@@ -46,6 +47,8 @@ export default () => {
               enable: appSetting['sync.enable'],
               port: appSetting['sync.server.port'],
             },
+          }).catch(err => {
+            console.log(err)
           })
         }
         break
@@ -57,6 +60,8 @@ export default () => {
               enable: appSetting['sync.enable'],
               host: appSetting['sync.client.host'],
             },
+          }).catch(err => {
+            console.log(err)
           })
         }
         break
@@ -101,18 +106,5 @@ export default () => {
   })
   watch(() => appSetting['network.proxy.port'], port => {
     proxy.port = port
-  })
-  watch(() => appSetting['network.proxy.username'], username => {
-    proxy.username = username
-  })
-  watch(() => appSetting['network.proxy.password'], password => {
-    proxy.password = password
-  })
-
-  watch(() => appSetting['player.isShowTaskProgess'], val => {
-    if (val) return
-    setTimeout(() => {
-      setTaskBarProgress(-1, 'normal')
-    })
   })
 }

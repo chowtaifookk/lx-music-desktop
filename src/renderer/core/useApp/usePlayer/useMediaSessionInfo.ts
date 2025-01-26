@@ -73,7 +73,7 @@ export default () => {
     navigator.mediaSession.playbackState = 'none'
   }
   const handleSetPlayInfo = () => {
-    emptyAudio.play().finally(() => {
+    void emptyAudio.play().finally(() => {
       updateMediaSessionInfo()
       updatePositionState({
         position: playProgress.nowPlayTime,
@@ -100,12 +100,12 @@ export default () => {
   })
   navigator.mediaSession.setActionHandler('seekbackward', details => {
     console.log('seekbackward')
-    const seekOffset = details.seekOffset == null ? 5 : details.seekOffset
+    const seekOffset = details.seekOffset ?? 5
     setProgress(Math.max(getCurrentTime() - seekOffset, 0))
   })
   navigator.mediaSession.setActionHandler('seekforward', details => {
     console.log('seekforward')
-    const seekOffset = details.seekOffset == null ? 5 : details.seekOffset
+    const seekOffset = details.seekOffset ?? 5
     setProgress(Math.min(getCurrentTime() + seekOffset, getDuration()))
   })
   navigator.mediaSession.setActionHandler('seekto', details => {
@@ -129,7 +129,7 @@ export default () => {
   // }
 
   window.app_event.on('playerLoadeddata', updatePositionState)
-  window.app_event.on('playerCanplay', updatePositionState)
+  window.app_event.on('playerPlaying', updatePositionState)
   window.app_event.on('play', handlePlay)
   window.app_event.on('pause', handlePause)
   window.app_event.on('stop', handleStop)
@@ -141,7 +141,7 @@ export default () => {
 
   onBeforeUnmount(() => {
     window.app_event.off('playerLoadeddata', updatePositionState)
-    window.app_event.off('playerCanplay', updatePositionState)
+    window.app_event.off('playerPlaying', updatePositionState)
     window.app_event.off('play', handlePlay)
     window.app_event.off('pause', handlePause)
     window.app_event.off('stop', handleStop)

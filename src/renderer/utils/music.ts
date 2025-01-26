@@ -1,5 +1,7 @@
 import { checkPath, joinPath, extname, basename, readFile, getFileStats } from '@common/utils/nodejs'
 import { formatPlayTime } from '@common/utils/common'
+import type { IComment } from 'music-metadata/lib/type'
+import { decodeKrc } from '@common/utils/lyricUtils/kg'
 
 export const checkDownloadFileAvailable = async(musicInfo: LX.Download.ListItem, savePath: string): Promise<boolean> => {
   return musicInfo.isComplate && !/\.ape$/.test(musicInfo.metadata.fileName) &&
@@ -7,7 +9,7 @@ export const checkDownloadFileAvailable = async(musicInfo: LX.Download.ListItem,
 }
 
 export const checkLocalFileAvailable = async(musicInfo: LX.Music.MusicInfoLocal): Promise<boolean> => {
-  return await checkPath(musicInfo.meta.filePath)
+  return checkPath(musicInfo.meta.filePath)
 }
 
 /**
@@ -17,9 +19,9 @@ export const checkLocalFileAvailable = async(musicInfo: LX.Music.MusicInfoLocal)
  */
 export const checkMusicFileAvailable = async(musicInfo: LX.Music.MusicInfo | LX.Download.ListItem, savePath: string): Promise<boolean> => {
   if ('progress' in musicInfo) {
-    return await checkDownloadFileAvailable(musicInfo, savePath)
+    return checkDownloadFileAvailable(musicInfo, savePath)
   } else if (musicInfo.source == 'local') {
-    return await checkLocalFileAvailable(musicInfo)
+    return checkLocalFileAvailable(musicInfo)
   } else return true
 }
 
@@ -33,7 +35,7 @@ export const getDownloadFilePath = async(musicInfo: LX.Download.ListItem, savePa
 }
 
 export const getLocalFilePath = async(musicInfo: LX.Music.MusicInfoLocal): Promise<string> => {
-  return await checkPath(musicInfo.meta.filePath) ? musicInfo.meta.filePath : ''
+  return (await checkPath(musicInfo.meta.filePath)) ? musicInfo.meta.filePath : ''
 }
 
 
@@ -45,9 +47,9 @@ export const getLocalFilePath = async(musicInfo: LX.Music.MusicInfoLocal): Promi
  */
 export const getMusicFilePath = async(musicInfo: LX.Music.MusicInfo | LX.Download.ListItem, savePath: string): Promise<string> => {
   if ('progress' in musicInfo) {
-    return await getDownloadFilePath(musicInfo, savePath)
+    return getDownloadFilePath(musicInfo, savePath)
   } else if (musicInfo.source == 'local') {
-    return await getLocalFilePath(musicInfo)
+    return getLocalFilePath(musicInfo)
   }
   return ''
 }
@@ -104,7 +106,10 @@ const getFileMetadata = async(path: string) => {
   if (prevFileInfo.path == path) return prevFileInfo.promise
   prevFileInfo.path = path
   return prevFileInfo.promise = checkPath(path).then(async(isExist) => {
-    return isExist ? import('music-metadata').then(async({ parseFile }) => parseFile(path)) : null
+    return isExist ? import('music-metadata').then(async({ parseFile }) => parseFile(path)).catch(err => {
+      console.log(err)
+      return null
+    }) : null
   })
 }
 /**
@@ -112,6 +117,13 @@ const getFileMetadata = async(path: string) => {
  * @param path 路径
  */
 export const getLocalMusicFilePic = async(path: string) => {
+  const filePath = new RegExp('\\' + extname(path) + '$')
+  let picPath = path.replace(filePath, '.jpg')
+  let stats = await getFileStats(picPath)
+  if (stats) return picPath
+  picPath = path.replace(filePath, '.png')
+  stats = await getFileStats(picPath)
+  if (stats) return picPath
   const metadata = await getFileMetadata(path)
   if (!metadata) return null
   const { selectCover } = await import('music-metadata')
@@ -157,10 +169,11 @@ export const getLocalMusicFilePic = async(path: string) => {
  * 获取歌曲文件歌词
  * @param path 路径
  */
-export const getLocalMusicFileLyric = async(path: string): Promise<string | null> => {
+export const getLocalMusicFileLyric = async(path: string): Promise<LX.Music.LyricInfo | null> => {
   // 尝试读取同目录下的同名lrc文件
-  const lrcPath = path.replace(new RegExp('\\' + extname(path) + '$'), '.lrc')
-  const stats = await getFileStats(lrcPath)
+  const filePath = new RegExp('\\' + extname(path) + '$')
+  let lrcPath = path.replace(filePath, '.lrc')
+  let stats = await getFileStats(lrcPath)
   // console.log(lrcPath, stats)
   if (stats && stats.size < 1024 * 1024 * 10) {
     const lrcBuf = await readFile(lrcPath)
@@ -171,21 +184,52 @@ export const getLocalMusicFileLyric = async(path: string): Promise<string | null
       const iconv = await import('iconv-lite')
       if (iconv.encodingExists(encoding)) {
         const lrc = iconv.decode(lrcBuf, encoding)
-        if (lrc) return lrc
+        if (lrc) {
+          return {
+            lyric: lrc,
+          }
+        }
       }
     }
   }
+  // 尝试读取同目录下的同名krc文件
+  lrcPath = path.replace(filePath, '.krc')
+  stats = await getFileStats(lrcPath)
+  console.log(lrcPath, stats?.size)
+  if (stats && stats.size < 1024 * 1024 * 10) {
+    const lrcBuf = await readFile(lrcPath)
+    try {
+      return await decodeKrc(lrcBuf)
+    } catch (e) {
+      console.log(e)
+    }
+  }
+
 
   // 尝试读取文件内歌词
   const metadata = await getFileMetadata(path)
+  // console.log(metadata)
   if (!metadata) return null
-  if (metadata.common.lyrics?.length && metadata.common.lyrics[0].length > 10) {
-    return metadata.common.lyrics[0]
+  let lyricInfo = metadata.common.lyrics?.[0]
+  if (lyricInfo) {
+    let lyric: string | undefined
+    if (typeof lyricInfo == 'object') lyric = lyricInfo.text
+    else if (typeof lyricInfo == 'string') lyric = lyricInfo
+    if (lyric && lyric.length > 10) {
+      return { lyric }
+    }
   }
   // console.log(metadata)
   for (const info of Object.values(metadata.native)) {
     const ust = info.find(i => i.id == 'USLT')
-    if (ust && ust.value.text.length > 10) return ust.value.text
+    if (ust) {
+      const value = ust.value as IComment
+      if (value.text && value.text.length > 10) {
+        return {
+          lyric: value.text,
+        }
+      }
+    }
   }
   return null
 }

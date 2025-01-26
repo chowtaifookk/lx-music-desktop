@@ -74,8 +74,15 @@ declare namespace LX {
       position: number
     }
 
+    interface DislikeInfo {
+      // type: 'music'
+      content: string
+      // meta: string | null
+    }
+
     interface MusicInfoOtherSource extends Omit<MusicInfoOnline, 'listId'> {
       source_id: string
+      order: number
     }
 
   }

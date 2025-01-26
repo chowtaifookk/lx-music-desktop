@@ -24,18 +24,20 @@ export const getMusicUrl = async({
   quality,
   isRefresh = false,
   onToggleSource,
+  allowToggleSource,
 }: {
   musicInfo: LX.Music.MusicInfo | LX.Download.ListItem
   isRefresh?: boolean
   quality?: LX.Quality
   onToggleSource?: (musicInfo?: LX.Music.MusicInfoOnline) => void
+  allowToggleSource?: boolean
 }): Promise<string> => {
   if ('progress' in musicInfo) {
-    return await getDownloadMusicUrl({ musicInfo, isRefresh, onToggleSource })
+    return getDownloadMusicUrl({ musicInfo, isRefresh, onToggleSource, allowToggleSource })
   } else if (musicInfo.source == 'local') {
-    return await getLocalMusicUrl({ musicInfo, isRefresh, onToggleSource })
+    return getLocalMusicUrl({ musicInfo, isRefresh, onToggleSource, allowToggleSource })
   } else {
-    return await getOnlineMusicUrl({ musicInfo, isRefresh, quality, onToggleSource })
+    return getOnlineMusicUrl({ musicInfo, isRefresh, quality, onToggleSource, allowToggleSource })
   }
 }
 
@@ -51,11 +53,11 @@ export const getPicPath = async({
   onToggleSource?: (musicInfo?: LX.Music.MusicInfoOnline) => void
 }): Promise<string> => {
   if ('progress' in musicInfo) {
-    return await getDownloadPicUrl({ musicInfo, isRefresh, listId, onToggleSource })
+    return getDownloadPicUrl({ musicInfo, isRefresh, listId, onToggleSource })
   } else if (musicInfo.source == 'local') {
-    return await getLocalPicUrl({ musicInfo, isRefresh, listId, onToggleSource })
+    return getLocalPicUrl({ musicInfo, isRefresh, listId, onToggleSource })
   } else {
-    return await getOnlinePicUrl({ musicInfo, isRefresh, listId, onToggleSource })
+    return getOnlinePicUrl({ musicInfo, isRefresh, listId, onToggleSource })
   }
 }
 
@@ -69,10 +71,10 @@ export const getLyricInfo = async({
   onToggleSource?: (musicInfo?: LX.Music.MusicInfoOnline) => void
 }): Promise<LX.Player.LyricInfo> => {
   if ('progress' in musicInfo) {
-    return await getDownloadLyricInfo({ musicInfo, isRefresh, onToggleSource })
+    return getDownloadLyricInfo({ musicInfo, isRefresh, onToggleSource })
   } else if (musicInfo.source == 'local') {
-    return await getLocalLyricInfo({ musicInfo, isRefresh, onToggleSource })
+    return getLocalLyricInfo({ musicInfo, isRefresh, onToggleSource })
   } else {
-    return await getOnlineLyricInfo({ musicInfo, isRefresh, onToggleSource })
+    return getOnlineLyricInfo({ musicInfo, isRefresh, onToggleSource })
   }
 }

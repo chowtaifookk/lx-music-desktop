@@ -44,6 +44,7 @@ const saveViewPrevStateThrottle = throttle((state) => {
 }, 1000)
 
 const initPosition = async() => {
+  // eslint-disable-next-line require-atomic-updates
   listPosition ??= await getListPositionInfoFromData() ?? {}
 }
 export const getListPosition = async(id: string): Promise<number> => {
@@ -55,7 +56,9 @@ export const setListPosition = async(id: string, position?: number) => {
   listPosition[id] = position ?? 0
   saveListPositionThrottle()
 }
-export const removeListPosition = (id: string) => {
+export const removeListPosition = async(id: string) => {
+  await initPosition()
+  if (listPosition[id] == null) return
   delete listPosition[id]
   saveListPositionThrottle()
 }
@@ -74,6 +77,7 @@ const saveListPrevSelectIdThrottle = throttle(() => {
   saveListPrevSelectIdFromData(listPrevSelectId)
 }, 200)
 export const getListPrevSelectId = async() => {
+  // eslint-disable-next-line require-atomic-updates
   listPrevSelectId ??= await getListPrevSelectIdFromData() ?? LIST_IDS.DEFAULT
   return listPrevSelectId ?? LIST_IDS.DEFAULT
 }
@@ -88,6 +92,7 @@ const saveListUpdateInfo = throttle(() => {
 
 const initListUpdateInfo = async() => {
   if (listUpdateInfo == null) {
+    // eslint-disable-next-line require-atomic-updates
     listUpdateInfo = await getListUpdateInfoFromData() ?? {}
     for (const [id, info] of Object.entries(listUpdateInfo)) {
       setUpdateTime(id, info.updateTime ? dateFormat(info.updateTime) : '')
@@ -121,7 +126,9 @@ export const setListUpdateTime = async(id: string, time: number) => {
 //   listUpdateInfo[id] = { updateTime, isAutoUpdate }
 //   saveListUpdateInfo()
 // }
-export const removeListUpdateInfo = (id: string) => {
+export const removeListUpdateInfo = async(id: string) => {
+  await initListUpdateInfo()
+  if (listUpdateInfo[id] == null) return
   delete listUpdateInfo[id]
   saveListUpdateInfo()
 }
@@ -138,6 +145,7 @@ export const overwriteListUpdateInfo = async(ids: string[]) => {
 
 
 export const getSearchSetting = async() => {
+  // eslint-disable-next-line require-atomic-updates
   searchSetting ??= await getSearchSettingFromData()
   return { ...searchSetting }
 }
@@ -154,6 +162,7 @@ export const setSearchSetting = async(setting: Partial<typeof DEFAULT_SETTING['s
 }
 
 export const getSongListSetting = async() => {
+  // eslint-disable-next-line require-atomic-updates
   songListSetting ??= await getSongListSettingFromData()
   return { ...songListSetting }
 }
@@ -164,6 +173,7 @@ export const setSongListSetting = async(setting: Partial<typeof DEFAULT_SETTING[
 }
 
 export const getLeaderboardSetting = async() => {
+  // eslint-disable-next-line require-atomic-updates
   leaderboardSetting ??= await getLeaderboardSettingFromData()
   return { ...leaderboardSetting }
 }

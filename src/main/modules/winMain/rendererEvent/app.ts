@@ -14,10 +14,8 @@ import {
   getCacheSize,
   toggleDevTools,
   setWindowBounds,
-  setProgressBar,
   setIgnoreMouseEvents,
   // setThumbnailClip,
-  setThumbarButtons,
   toggleMinimize,
   toggleHide,
   showSelectDialog,
@@ -25,7 +23,8 @@ import {
   showSaveDialog,
 } from '@main/modules/winMain'
 import { quitApp } from '@main/app'
-import { getAllThemes, removeTheme, saveTheme } from '@main/utils'
+import { getAllThemes, removeTheme, saveTheme, setPowerSaveBlocker } from '@main/utils'
+import { openDirInExplorer } from '@common/utils/electron'
 
 export default () => {
   // 设置应用名称
@@ -54,12 +53,14 @@ export default () => {
   mainOn(WIN_MAIN_RENDERER_EVENT_NAME.focus, () => {
     showWindow()
   })
+  mainOn<boolean>(WIN_MAIN_RENDERER_EVENT_NAME.set_power_save_blocker, ({ params: enabled }) => {
+    setPowerSaveBlocker(enabled)
+  })
   mainOn<boolean>(WIN_MAIN_RENDERER_EVENT_NAME.close, ({ params: isForce }) => {
     if (isForce) {
       app.exit(0)
       return
     }
-    global.lx.isTrafficLightClose = true
     closeWindow()
   })
   // 全屏
@@ -70,7 +71,7 @@ export default () => {
 
   // 选择目录
   mainHandle<Electron.OpenDialogOptions, Electron.OpenDialogReturnValue>(WIN_MAIN_RENDERER_EVENT_NAME.show_select_dialog, async({ params: options }) => {
-    return await showSelectDialog(options)
+    return showSelectDialog(options)
   })
   // 显示弹窗信息
   mainOn<Electron.MessageBoxSyncOptions>(WIN_MAIN_RENDERER_EVENT_NAME.show_dialog, ({ params }) => {
@@ -78,7 +79,11 @@ export default () => {
   })
   // 显示保存弹窗
   mainHandle<Electron.SaveDialogOptions, Electron.SaveDialogReturnValue>(WIN_MAIN_RENDERER_EVENT_NAME.show_save_dialog, async({ params }) => {
-    return await showSaveDialog(params)
+    return showSaveDialog(params)
+  })
+  // 在资源管理器中定位文件
+  mainOn<string>(WIN_MAIN_RENDERER_EVENT_NAME.open_dir_in_explorer, async({ params }) => {
+    return openDirInExplorer(params)
   })
 
 
@@ -87,7 +92,7 @@ export default () => {
   })
 
   mainHandle<number>(WIN_MAIN_RENDERER_EVENT_NAME.get_cache_size, async() => {
-    return await getCacheSize()
+    return getCacheSize()
   })
 
   mainOn(WIN_MAIN_RENDERER_EVENT_NAME.open_dev_tools, () => {
@@ -96,13 +101,6 @@ export default () => {
 
   mainOn<Partial<Electron.Rectangle>>(WIN_MAIN_RENDERER_EVENT_NAME.set_window_size, ({ params }) => {
     setWindowBounds(params)
-  })
-
-  mainOn<LX.Player.ProgressBarOptions>(WIN_MAIN_RENDERER_EVENT_NAME.progress, ({ params }) => {
-    // console.log(params)
-    setProgressBar(params.progress, {
-      mode: params.mode ?? 'normal',
-    })
   })
 
   mainOn<boolean>(WIN_MAIN_RENDERER_EVENT_NAME.set_ignore_mouse_events, ({ params: isIgnored }) => {
@@ -115,8 +113,9 @@ export default () => {
   //   return setThumbnailClip(params)
   // })
 
-  mainOn<LX.TaskBarButtonFlags>(WIN_MAIN_RENDERER_EVENT_NAME.player_action_set_buttons, ({ params }) => {
-    setThumbarButtons(params)
+  mainOn<LX.Player.Status>(WIN_MAIN_RENDERER_EVENT_NAME.player_status, ({ params }) => {
+    // setThumbarButtons(params)
+    global.lx.event_app.player_status(params)
   })
 
   mainOn(WIN_MAIN_RENDERER_EVENT_NAME.inited, () => {

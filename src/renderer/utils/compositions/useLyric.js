@@ -2,6 +2,7 @@ import { ref, onMounted, onBeforeUnmount, watch, nextTick } from '@common/utils/
 import { throttle, formatPlayTime2 } from '@common/utils/common'
 import { scrollTo } from '@common/utils/renderer'
 import { play } from '@renderer/core/player/action'
+import { appSetting } from '@renderer/store/setting'
 // import { player as eventPlayerNames } from '@renderer/event/names'
 
 export default ({ isPlay, lyric, playProgress, isShowLyricProgressSetting, offset }) => {
@@ -80,10 +81,6 @@ export default ({ isPlay, lyric, playProgress, isShowLyricProgressSetting, offse
 
   const handleScrollLrc = (duration = 300) => {
     if (!dom_lines?.length || !dom_lyric.value) return
-    if (cancelScrollFn) {
-      cancelScrollFn()
-      cancelScrollFn = null
-    }
     if (isSkipMouseEnter) return
     if (isStopScroll.value) return
     let dom_p = dom_lines[lyric.line]
@@ -179,10 +176,6 @@ export default ({ isPlay, lyric, playProgress, isShowLyricProgressSetting, offse
       if (lines.length) {
         setLyric(lines)
       } else {
-        if (cancelScrollFn) {
-          cancelScrollFn()
-          cancelScrollFn = null
-        }
         cancelScrollFn = scrollTo(dom_lyric.value, 0, 300, () => {
           if (lyric.lines !== lines) return
           setLyric(lines)
@@ -200,10 +193,14 @@ export default ({ isPlay, lyric, playProgress, isShowLyricProgressSetting, offse
     isSetedLines &&= false
     if (oldLine == null || line - oldLine != 1) return handleScrollLrc()
 
-    delayScrollTimeout = setTimeout(() => {
-      delayScrollTimeout = null
-      handleScrollLrc(600)
-    }, 600)
+    if (appSetting['playDetail.isDelayScroll']) {
+      delayScrollTimeout = setTimeout(() => {
+        delayScrollTimeout = null
+        handleScrollLrc(600)
+      }, 600)
+    } else {
+      handleScrollLrc()
+    }
   }
 
   watch(() => lyric.lines, initLrc)
@@ -216,9 +213,6 @@ export default ({ isPlay, lyric, playProgress, isShowLyricProgressSetting, offse
     document.addEventListener('touchend', handleMouseMsUp)
 
     initLrc(lyric.lines, null)
-    nextTick(() => {
-      scrollLine(lyric.line)
-    })
   })
 
   onBeforeUnmount(() => {

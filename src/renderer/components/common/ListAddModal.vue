@@ -22,7 +22,8 @@ import { watch, ref, onBeforeUnmount } from '@common/utils/vueTools'
 import { defaultList, loveList, userLists } from '@renderer/store/list/state'
 import { addListMusics, moveListMusics, createUserList, getMusicExistListIds } from '@renderer/store/list/action'
 import useKeyDown from '@renderer/utils/compositions/useKeyDown'
-import { useI18n } from '@/lang'
+import { useI18n } from '@root/lang'
+import { dialog } from '@renderer/plugins/Dialog'
 
 export default {
   props: {
@@ -71,7 +72,7 @@ export default {
 
     const checkMusicExist = (musicInfo) => {
       const mid = musicInfo.id
-      getMusicExistListIds(mid).then(ids => {
+      void getMusicExistListIds(mid).then(ids => {
         if (mid != musicInfo.id) return
         for (const list of lists.value) {
           if (ids.includes(list.id)) list.isExist = true
@@ -150,9 +151,8 @@ export default {
           : width < 3840 ? 5 : 6
     },
     handleClick(index) {
-      this.isMove
-        ? moveListMusics(this.fromListId, this.lists[index].id, [this.currentMusicInfo])
-        : addListMusics(this.lists[index].id, [this.currentMusicInfo])
+      if (this.isMove) void moveListMusics(this.fromListId, this.lists[index].id, [this.currentMusicInfo])
+      else void addListMusics(this.lists[index].id, [this.currentMusicInfo])
 
       this.lists[index].isExist = true
       if (this.keyModDown && !this.isMove) return
@@ -169,12 +169,14 @@ export default {
       this.isEditing = true
       this.$nextTick(() => event.currentTarget.querySelector('.' + this.$style.newListInput).focus())
     },
-    handleSaveList(event) {
+    async handleSaveList(event) {
       let name = event.target.value
       this.newListName = event.target.value = ''
       this.isEditing = false
-      if (!name) return
-      createUserList({ name })
+      if (!name || (
+        userLists.some(l => l.name == name) && !(await dialog.confirm(window.i18n.t('list_duplicate_tip'))))
+      ) return
+      void createUserList({ name })
     },
   },
 }
@@ -207,7 +209,7 @@ export default {
   color: var(--color-primary);
 }
 
-.btn-content {
+.btnContent {
   flex: auto;
   max-height: 100%;
   padding-right: 15px;

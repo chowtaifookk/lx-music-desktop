@@ -20,19 +20,21 @@ export default () => {
 
   // 更新超时定时器
   let updateTimeout: number | null = null
-  if (window.lx.isProd && !(isWin && process.arch.includes('arm'))) {
-    updateTimeout = window.setTimeout(() => {
-      updateTimeout = null
-      void nextTick(() => {
-        showUpdateModal()
-        setTimeout(() => {
-          void dialog({
-            message: window.i18n.t('update__timeout_top'),
-            confirmButtonText: window.i18n.t('alert_button_text'),
-          })
-        }, 500)
-      })
-    }, 60 * 60 * 1000)
+  const startUpdateTimeout = () => {
+    if (window.lx.isProd && !(isWin && process.arch.includes('arm'))) {
+      updateTimeout = window.setTimeout(() => {
+        updateTimeout = null
+        void nextTick(() => {
+          showUpdateModal()
+          setTimeout(() => {
+            void dialog({
+              message: window.i18n.t('update__timeout_top'),
+              confirmButtonText: window.i18n.t('alert_button_text'),
+            })
+          }, 500)
+        })
+      }, 60 * 60 * 1000)
+    }
   }
 
   const clearUpdateTimeout = () => {
@@ -69,7 +71,7 @@ export default () => {
   const handleGetVersionInfo = async(): Promise<NonNullable<typeof versionInfo['newVersion']>> => {
     return (versionInfo.newVersion?.history && !versionInfo.reCheck
       ? Promise.resolve(versionInfo.newVersion)
-      : getVersionInfo().then(body => {
+      : getVersionInfo().then((body: any) => {
         versionInfo.newVersion = body
         return body
       })
@@ -102,7 +104,10 @@ export default () => {
       if (result.version == '0.0.0') {
         versionInfo.isUnknown = true
         versionInfo.status = 'error'
-        versionInfo.showModal = true
+        let ignoreFailTipTime = parseInt(localStorage.getItem('update__check_failed_tip') ?? '0')
+        if (Date.now() - ignoreFailTipTime > 7 * 86400000) {
+          versionInfo.showModal = true
+        }
         return
       }
       versionInfo.isUnknown = false
@@ -146,7 +151,10 @@ export default () => {
       desc: info.releaseNotes as string,
     }
     versionInfo.isLatest = false
-    if (appSetting['common.tryAutoUpdate']) versionInfo.status = 'downloading'
+    if (appSetting['common.tryAutoUpdate']) {
+      versionInfo.status = 'downloading'
+      startUpdateTimeout()
+    }
     void nextTick(() => {
       showUpdateModal()
     })

@@ -25,12 +25,12 @@
             <use xlink:href="#icon-font-decrease" />
           </svg>
         </button>
-        <button :class="$style.btn" :title="$t('desktop_lyric__opactiy_increase')" @click="handleOpactiyChange('increase', 10)" @contextmenu="handleOpactiyChange('increase', 2)">
+        <button :class="$style.btn" :title="$t('desktop_lyric__opacity_increase')" @click="handleOpactiyChange('increase', 10)" @contextmenu="handleOpactiyChange('increase', 2)">
           <svg version="1.1" xmlns="http://www.w3.org/2000/svg" xlink="http://www.w3.org/1999/xlink" height="20px" viewBox="0 0 24 24" space="preserve">
             <use xlink:href="#icon-opactiy-increase" />
           </svg>
         </button>
-        <button :class="$style.btn" :title="$t('desktop_lyric__opactiy_decrease')" @click="handleOpactiyChange('decrease', 10)" @contextmenu="handleOpactiyChange('decrease', 2)">
+        <button :class="$style.btn" :title="$t('desktop_lyric__opacity_decrease')" @click="handleOpactiyChange('decrease', 10)" @contextmenu="handleOpactiyChange('decrease', 2)">
           <svg version="1.1" xmlns="http://www.w3.org/2000/svg" xlink="http://www.w3.org/1999/xlink" height="20px" viewBox="0 0 24 24" space="preserve">
             <use xlink:href="#icon-opactiy-decrease" />
           </svg>
@@ -58,7 +58,7 @@
 
 <script>
 import { ref } from '@common/utils/vueTools'
-import { setting, themeList } from '@lyric/store/state'
+import { setting } from '@lyric/store/state'
 import { updateSetting } from '@lyric/store/action'
 
 export default {
@@ -105,7 +105,6 @@ export default {
     }
     return {
       setting,
-      themeList,
       isShowThemeList,
 
       handleClose,

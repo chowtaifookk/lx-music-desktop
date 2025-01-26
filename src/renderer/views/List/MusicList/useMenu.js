@@ -1,6 +1,7 @@
 import { computed, ref, shallowReactive, reactive, nextTick } from '@common/utils/vueTools'
 import musicSdk from '@renderer/utils/musicSdk'
 import { useI18n } from '@renderer/plugins/i18n'
+import { hasDislike } from '@renderer/core/dislikeList'
 
 export default ({
   assertApiSupport,
@@ -10,11 +11,13 @@ export default ({
   handlePlayMusic,
   handlePlayMusicLater,
   handleSearch,
+  handleShowMusicToggleModal,
   handleShowMusicAddModal,
   handleShowMusicMoveModal,
   handleShowSortModal,
   handleOpenMusicDetail,
   handleCopyName,
+  handleDislikeMusic,
   handleRemoveMusic,
 }) => {
   const itemMenuControl = reactive({
@@ -24,8 +27,10 @@ export default ({
     addTo: true,
     moveTo: true,
     sort: true,
+    toggleSource: true,
     download: true,
     search: true,
+    dislike: true,
     remove: true,
     sourceDetail: true,
   })
@@ -66,6 +71,11 @@ export default ({
         disabled: !itemMenuControl.sort,
       },
       {
+        name: t('list__toggle_source'),
+        action: 'toggleSource',
+        disabled: !itemMenuControl.toggleSource,
+      },
+      {
         name: t('list__copy_name'),
         action: 'copyName',
         disabled: !itemMenuControl.copyName,
@@ -81,6 +91,11 @@ export default ({
         disabled: !itemMenuControl.search,
       },
       {
+        name: t('list__dislike'),
+        action: 'dislike',
+        disabled: !itemMenuControl.dislike,
+      },
+      {
         name: t('list__remove'),
         action: 'remove',
         disabled: !itemMenuControl.remove,
@@ -93,6 +108,8 @@ export default ({
     // itemMenuControl.play =
     //   itemMenuControl.playLater =
     itemMenuControl.download = assertApiSupport(musicInfo.source) && musicInfo.source != 'local'
+
+    itemMenuControl.dislike = !hasDislike(musicInfo)
 
     menuLocation.x = event.pageX
     menuLocation.y = event.pageY
@@ -132,11 +149,17 @@ export default ({
       case 'sort':
         handleShowSortModal(index)
         break
+      case 'toggleSource':
+        handleShowMusicToggleModal(index)
+        break
       case 'download':
         handleShowDownloadModal(index)
         break
       case 'search':
         handleSearch(index)
+        break
+      case 'dislike':
+        handleDislikeMusic(index)
         break
       case 'remove':
         handleRemoveMusic(index)

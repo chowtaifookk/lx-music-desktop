@@ -5,7 +5,7 @@
         v-show="!isShowLrcSelectContent"
         ref="dom_lyric"
         :class="['lyric', $style.lyric, { [$style.draging]: isMsDown }, { [$style.lrcActiveZoom]: isZoomActiveLrc }]" :style="lrcStyles"
-        @wheel="handleWheel" @mousedown="handleLyricMouseDown"
+        @wheel="handleWheel" @mousedown="handleLyricMouseDown" @touchstart="handleLyricTouchStart"
         @contextmenu.stop="handleShowLyricMenu"
       >
         <div :class="['pre', $style.lyricSpace]" />
@@ -25,7 +25,7 @@
       </div>
     </transition>
     <transition enter-active-class="animated fadeIn" leave-active-class="animated fadeOut">
-      <div v-if="isShowLrcSelectContent" :class="[$style.lyricSelectContent, 'select', 'scroll', 'lyricSelectContent']" @contextmenu="handleCopySelectText">
+      <div v-if="isShowLrcSelectContent" ref="dom_lrc_select_content" tabindex="-1" :class="[$style.lyricSelectContent, 'select', 'scroll', 'lyricSelectContent']" @contextmenu="handleCopySelectText">
         <div v-for="(info, index) in lyric.lines" :key="index" :class="[$style.lyricSelectline, { [$style.lrcActive]: lyric.line == index }]">
           <span>{{ info.text }}</span>
           <template v-for="(lrc, i) in info.extendedLyrics" :key="i">
@@ -56,9 +56,10 @@ import {
 } from '@renderer/store/player/action'
 import { onMounted, onBeforeUnmount, computed, reactive, ref, nextTick, watch } from '@common/utils/vueTools'
 import useLyric from '@renderer/utils/compositions/useLyric'
-import LyricMenu from './components/LyricMenu'
+import LyricMenu from './components/LyricMenu.vue'
 import { appSetting } from '@renderer/store/setting'
 import { setLyricOffset } from '@renderer/core/lyric'
+import useSelectAllLrc from './useSelectAllLrc'
 
 export default {
   components: {
@@ -76,12 +77,15 @@ export default {
       isStopScroll,
       timeStr,
       handleLyricMouseDown,
+      handleLyricTouchStart,
       handleWheel,
       handleSkipPlay,
       handleSkipMouseEnter,
       handleSkipMouseLeave,
       handleScrollLrc,
     } = useLyric({ isPlay, lyric, playProgress, isShowLyricProgressSetting })
+
+    const dom_lrc_select_content = useSelectAllLrc()
 
     watch([isFullscreen, isShowPlayComment], () => {
       setTimeout(handleScrollLrc, 400)
@@ -113,7 +117,7 @@ export default {
       lyricMenuXY.x = event.pageX
       lyricMenuXY.y = event.pageY
       if (lyricMenuVisible.value) return
-      nextTick(() => {
+      void nextTick(() => {
         lyricMenuVisible.value = true
       })
     }
@@ -154,9 +158,11 @@ export default {
       dom_lyric,
       dom_lyric_text,
       dom_skip_line,
+      dom_lrc_select_content,
       isMsDown,
       timeStr,
       handleLyricMouseDown,
+      handleLyricTouchStart,
       handleWheel,
       handleSkipPlay,
       handleSkipMouseEnter,
@@ -263,7 +269,7 @@ export default {
   //   font-size: 1.2em;
   // }
 }
-.lrc-active-zoom {
+.lrcActiveZoom {
   :global {
     .line-content {
       &.active {
@@ -296,7 +302,7 @@ export default {
     position: absolute;
     right: 30px;
     top: -14px;
-    line-height: 1;
+    line-height: 1.2;
     font-size: 12px;
     color: var(--color-primary-dark-100);
     opacity: .7;
@@ -343,12 +349,12 @@ export default {
   .lyricSelectlineExtended {
     font-size: 14px;
   }
-  .lrc-active {
+  .lrcActive {
     color: var(--color-primary);
   }
 }
 
-.lyric-space {
+.lyricSpace {
   height: 70%;
 }
 

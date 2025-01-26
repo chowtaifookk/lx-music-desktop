@@ -6,8 +6,13 @@ module.exports = {
     'del',
     'comlink',
     'vue',
-    'eslint-plugin-n',
+    'image-size',
+    'message2call',
     '@types/ws',
+    'eslint',
+    '@types/node',
+    'electron-debug',
+    // 'eslint-config-standard-with-typescript',
   ],
 
   // target: 'newest',
@@ -23,7 +28,9 @@ module.exports = {
 
   // target: 'minor',
   // filter: [
-  //   'eslint-plugin-n',
   //   'electron',
+  //   'eslint',
+  //   'electron-debug',
+  //   '@types/node',
   // ],
 }
